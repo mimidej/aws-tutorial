@@ -18,7 +18,7 @@ te guiará por el proceso y te dejará con una cuenta segura desde el primer dí
 - [Configuración de seguridad inicial](#4-configuración-de-seguridad-inicial)
 - [Buenas prácticas](#5-buenas-prácticas)
 
-- ---
+---
 
 ## 1. Registro de la cuenta
 
@@ -72,7 +72,7 @@ AWS ofrece tres planes de soporte. Para comenzar, el plan gratuito es suficiente
 > 💡 **Recomendación:** Selecciona **Basic** para comenzar. Puedes cambiar
 > de plan en cualquier momento desde la consola de AWS.
 
-
+---
 
 ## 4. Configuración de seguridad inicial
 
@@ -81,6 +81,8 @@ Una vez creada la cuenta, realiza estos pasos **antes de cualquier otra cosa**.
 > ⚠️ **Crítico:** La cuenta que acabas de crear es el usuario **root**. Este usuario
 > tiene acceso total e irrestricto a todos los servicios y no debe usarse
 > para tareas del día a día.
+
+*Estas son buenas prácticas en torno a identidad, accesos y permisos, más adelante se profundizará en el tema (IAM)*
 
 ### 4.1 Activa MFA en el usuario root
 
@@ -104,7 +106,7 @@ Si alguien obtiene tu contraseña, no podrá acceder sin el segundo factor.
 > ⚠️ **Importante:** A partir de este punto, usa siempre el usuario IAM
 > y nunca el usuario root para operar en AWS.
 
-
+---
 
 
 ## 5. Buenas prácticas
