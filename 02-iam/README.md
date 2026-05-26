@@ -73,5 +73,167 @@ por servicios de AWS, aplicaciones o usuarios de otras cuentas.
 > usa un rol en lugar de crear un usuario con access keys.
 
 
+---
+---
 
+## 2. MFA en IAM
 
+El MFA (Multi-Factor Authentication) agrega una segunda capa de verificación
+al iniciar sesión. En IAM puedes activarlo a nivel de usuario individual.
+
+### 2.1 Tipos de MFA disponibles
+
+| Tipo | Descripción | Ejemplo |
+|------|-------------|---------|
+| Aplicación de autenticación | Genera códigos temporales cada 30 segundos | Google Authenticator, Authy |
+| Llave de seguridad física | Dispositivo USB que debes tener físicamente | YubiKey |
+| MFA por hardware | Dispositivo dedicado provisto por AWS | Gemalto token |
+
+### 2.2 Cómo activar MFA en un usuario IAM
+
+1. Ve a **IAM → Users** y selecciona el usuario
+2. Click en la pestaña **Security credentials**
+3. En la sección **Multi-factor authentication** → click **Assign MFA device**
+4. Selecciona el tipo de MFA y sigue las instrucciones
+
+> ⚠️ **Importante:** Activa MFA tanto en el usuario root como en todos los
+> usuarios IAM con permisos administrativos. Un usuario sin MFA es un
+> riesgo de seguridad aunque tenga una contraseña robusta.
+
+### 2.3 Forzar MFA mediante política
+
+Puedes crear una política que **obligue** a los usuarios a tener MFA activo
+antes de poder realizar cualquier acción en AWS. Sin MFA habilitado, el usuario
+solo podrá activarlo pero no podrá hacer nada más.
+
+> 💡 **Recomendación:** Aplica esta política a todos los usuarios de tu cuenta
+> desde el primer día. Es una de las medidas de seguridad más efectivas y
+> fáciles de implementar.
+---
+
+## 3. Access Keys
+
+Las access keys son credenciales que permiten acceder a AWS de forma
+programática, es decir, desde la terminal, un script o una aplicación,
+en lugar de hacerlo desde la consola web.
+
+Una access key se compone de dos partes:
+
+| Componente | Descripción |
+|------------|-------------|
+| Access Key ID | Identificador público, similar a un nombre de usuario |
+| Secret Access Key | Clave privada, similar a una contraseña |
+
+> ⚠️ **Crítico:** La Secret Access Key solo se muestra **una vez** en el momento
+> de su creación. Si la pierdes, deberás eliminar la access key y crear una nueva.
+
+### 3.1 Cuándo usar access keys
+
+- Acceso desde la **AWS CLI** en tu terminal
+- Aplicaciones o scripts que interactúan con AWS
+- Herramientas de infraestructura como código como **Terraform** o **Pulumi**
+
+### 3.2 Cuándo NO usar access keys
+
+- Nunca en una instancia EC2 → usa un **rol IAM** en su lugar
+- Nunca en una función Lambda → usa un **rol de ejecución**
+- Nunca dentro de código que se sube a un repositorio público
+
+### 3.3 Cómo crear una access key
+
+1. Ve a **IAM → Users** y selecciona el usuario
+2. Click en la pestaña **Security credentials**
+3. En la sección **Access keys** → click **Create access key**
+4. Selecciona el caso de uso y sigue las instrucciones
+5. Descarga el archivo `.csv` o copia las credenciales en ese momento
+
+> 💡 **Buena práctica:** Rota tus access keys periódicamente. IAM te muestra
+> la fecha del último uso de cada key en **IAM → Users → Security credentials**,
+> lo que te ayuda a identificar keys que ya no se usan y deben eliminarse.
+
+---
+
+---
+
+## 4. Permission Boundaries
+
+Un permission boundary es una política que define el **límite máximo de permisos**
+que un usuario o rol puede tener, independientemente de las políticas que tenga
+asignadas.
+
+> 💡 **Analogía:** Imagina que tienes un empleado con acceso a toda la oficina
+> (sus políticas), pero solo puede entrar al edificio en horario laboral
+> (su permission boundary). El boundary no le da acceso, solo lo limita.
+
+### 4.1 ¿Cómo funcionan?
+
+Los permisos efectivos de un usuario son la **intersección** entre sus políticas
+asignadas y su permission boundary:
+
+| El usuario tiene en su política | Está en el boundary | ¿Puede hacerlo? |
+|---------------------------------|---------------------|-----------------|
+| ✅ Permitido                    | ✅ Permitido        | ✅ Sí           |
+| ✅ Permitido                    | ❌ No incluido      | ❌ No           |
+| ❌ No incluido                  | ✅ Permitido        | ❌ No           |
+
+### 4.2 ¿Cuándo usarlos?
+
+- Cuando delegas la administración de IAM a otro equipo y quieres asegurarte
+  de que no puedan crear usuarios con más permisos de los que ellos mismos tienen
+- Cuando quieres limitar el alcance de un rol sin modificar sus políticas directamente
+- En entornos con múltiples equipos donde cada uno administra sus propios recursos
+
+> ⚠️ **Importante:** Los permission boundaries no reemplazan a las políticas,
+> trabajan en conjunto con ellas. Un boundary por sí solo no otorga ningún permiso.
+
+---
+
+---
+
+## 5. Buenas prácticas
+
+### Principio de mínimo privilegio
+
+Otorga únicamente los permisos necesarios para realizar una tarea específica.
+Si un usuario solo necesita leer objetos de S3, no le des acceso de escritura.
+
+### Auditoría y monitoreo
+
+- Revisa **IAM → Credential report** periódicamente para identificar usuarios
+  con credenciales antiguas o sin MFA activo
+- Activa **AWS CloudTrail** para registrar todas las acciones realizadas
+  en tu cuenta con detalle de quién, qué y cuándo
+- Revisa **IAM → Access Advisor** para identificar permisos que no se han
+  usado y eliminarlos
+
+### Organización
+
+- Asigna permisos siempre a **grupos**, nunca directamente a usuarios
+- Usa nombres descriptivos y consistentes para usuarios, grupos y roles:
+
+| ❌ Evitar | ✅ Preferir |
+|-----------|------------|
+| `user1` | `ana.garcia` |
+| `admin` | `equipo-devops-admin` |
+| `role1` | `rol-ec2-acceso-s3` |
+
+---
+
+## Siguientes pasos
+
+Con IAM configurado correctamente, puedes continuar con:
+
+- [Lanzar tu primera instancia EC2](../03-ec2/README.md)
+
+---
+
+## Recursos oficiales
+
+- [Documentación oficial de IAM](https://docs.aws.amazon.com/iam)
+- [Guía de buenas prácticas de IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
+- [AWS CloudTrail](https://docs.aws.amazon.com/cloudtrail)
+
+---
+
+> 📝 **Nota:** Los links a otros tutoriales estarán disponibles conforme
+> se publiquen en este repositorio.
