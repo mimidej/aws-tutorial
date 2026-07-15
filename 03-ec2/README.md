@@ -19,133 +19,279 @@ flexibilidad de escalarlos hacia arriba o hacia abajo según la demanda.
 - [Buenas prácticas](#5-buenas-prácticas)
 
 
+---
 
 ## 1. Conceptos clave
 
-Antes de lanzar tu primer servidor en la nube, es fundamental entender las piezas que lo componen:
+Antes de lanzar una instancia, es importante entender los componentes
+que intervienen en el proceso:
 
-### 1.1 Instancia
-Es el servidor virtual en la nube. Su capacidad de procesamiento y memoria depende del **tipo de instancia** que elijas.
+### AMI (Amazon Machine Image)
 
-### 1.2 AMI (Amazon Machine Image)
-Es la plantilla que define el sistema operativo y el software inicial de tu servidor (por ejemplo: Ubuntu Server, Amazon Linux 3, Windows Server).
+Plantilla que define el sistema operativo y configuración base de la instancia.
+AWS ofrece AMIs oficiales de Amazon Linux, Ubuntu, Windows Server, entre otras.
+También puedes crear tus propias AMIs a partir de una instancia existente.
 
-### 1.3 Familias y Tipos de Instancia
-AWS categoriza sus instancias según el caso de uso. Se nombran con una combinación de letras y números (p. ej., `t3.micro`):
+### Tipos de instancia
 
-| Familia | Tipo | Optimizado para | Ejemplo común |
-|---------|------|-----------------|---------------|
-| **t3 / t2** | General | Balance de cómputo, memoria y red. Ideal para desarrollo y pruebas. | `t3.micro` (Apto para Free Tier) |
-| **c6g / c5** | Cómputo | Procesadores de alto rendimiento. Ideal para servidores web de alto tráfico. | `c6g.large` |
-| **r6g / r5** | Memoria | Cargas de trabajo que procesan grandes volúmenes de datos en memoria. | `r5.large` |
+Definen la capacidad de cómputo asignada a la instancia. Siguen la nomenclatura
+`familia.tamaño`, por ejemplo:
 
-### 1.4 Key Pairs (Pares de Claves)
-Es el método de autenticación para conectarte de forma segura a tu instancia por SSH. Se compone de:
-*   **Clave pública:** AWS la guarda en el servidor.
-*   **Clave privada:** Un archivo (generalmente `.pem`) que descargas en tu computadora. **Nunca la compartas ni la subas a tu repositorio.**
+| Instancia | vCPUs | RAM | Caso de uso típico |
+|-----------|-------|-----|--------------------|
+| `t3.micro` | 2 | 1 GB | Desarrollo y pruebas |
+| `t3.medium` | 2 | 4 GB | Aplicaciones pequeñas |
+| `m6i.large` | 2 | 8 GB | Cargas de trabajo generales |
+| `c6i.xlarge` | 4 | 8 GB | Cómputo intensivo |
 
-### 1.5 Security Groups (Grupos de Seguridad)
-Actúan como un **firewall virtual** que controla el tráfico entrante y saliente de tu instancia. Por defecto, todo el tráfico entrante está bloqueado a menos que crees una regla que lo permita explícitamente.
+> 💡 **Tip:** Para el Free Tier de AWS usa siempre `t2.micro` o `t3.micro`.
+
+### Key Pair
+
+Par de llaves criptográficas para acceder a la instancia vía SSH. AWS almacena
+la llave pública y tú descargas la llave privada (`.pem`). Sin ella no podrás
+acceder a la instancia.
+
+> ⚠️ **Importante:** La llave privada se descarga una sola vez. Si la pierdes
+> deberás reemplazarla mediante un proceso manual en la instancia.
+
+### Security Group
+
+Actúa como firewall a nivel de instancia. Define qué tráfico de entrada
+y salida está permitido mediante reglas de puerto, protocolo y origen.
+
+### VPC y Subnets
+
+Toda instancia se lanza dentro de una VPC en una subnet específica, lo que
+determina su conectividad y visibilidad dentro de tu arquitectura de red.
+
 
 ---
 
 ## 2. Lanzar una instancia
 
-Sigue estos pasos para desplegar tu primer servidor virtual bajo la capa gratuita (Free Tier).
+1. Ve a la consola de AWS → servicio **EC2**
+2. Click en **Launch instance**
 
-### Paso 1: Ir al Panel de EC2
-1. Inicia sesión con tu usuario IAM administrativo.
-2. En la barra de búsqueda superior, escribe **EC2** y selecciona el servicio.
-3. Haz click en el botón naranja **Launch instance** (Lanzar instancia).
+### 2.1 Configuración básica
 
-### Paso 2: Nombre y Etiquetas (Tags)
-1. En **Name**, escribe un nombre descriptivo para identificar tu servidor (p. ej., `servidor-web-dev`).
-2. *(Opcional)* Agrega etiquetas adicionales como `Environment: dev` o `Project: tutorial` para mantener el orden.
+| Parámetro | Recomendación |
+|-----------|---------------|
+| Name | Nombre descriptivo, por ejemplo: `web-server-dev` |
+| AMI | Amazon Linux 2023 o Ubuntu 22.04 LTS |
+| Tipo de instancia | `t2.micro` o `t3.micro` para Free Tier |
+| Key pair | Crea uno nuevo o selecciona uno existente |
 
-### Paso 3: Selección de Sistema Operativo (AMI)
-1. En la sección **Application and OS Images**, selecciona **Ubuntu**.
-2. Asegúrate de que en el menú desplegable esté seleccionada una versión con la etiqueta **"Free tier eligible"** (elegible para la capa gratuita), por ejemplo, *Ubuntu Server 24.04 LTS*.
+### 2.2 Configuración de red
 
-### Paso 4: Tipo de Instancia
-1. En **Instance type**, busca y selecciona **`t2.micro`** (o **`t3.micro`**, dependiendo de la región en la que te encuentres) que tenga la etiqueta **"Free tier eligible"**.
+- Selecciona la **VPC** y **subnet** adecuadas para tu ambiente
+- Habilita **Auto-assign public IP** si necesitas acceso desde internet
+- En **Security Group**, abre únicamente los puertos necesarios:
 
-### Paso 5: Configurar Key Pair
-1. En **Key pair (login)**, haz click en **Create new key pair**.
-2. Dale un nombre descriptivo (p. ej., `mi-clave-aws`).
-3. Selecciona el formato **`.pem`** (si usas Linux, macOS o PowerShell en Windows) o **`.ppk`** (si usas Putty en versiones antiguas de Windows).
-4. Haz click en **Create key pair** y guarda el archivo descargado en un lugar seguro.
+| Puerto | Protocolo | Origen | Uso |
+|--------|-----------|--------|-----|
+| 22 | TCP | Tu IP | SSH |
+| 80 | TCP | 0.0.0.0/0 | HTTP |
+| 443 | TCP | 0.0.0.0/0 | HTTPS |
 
-> ⚠️ **Crítico:** Si pierdes este archivo `.pem`, no podrás volver a conectarte a tu servidor por SSH. AWS no guarda una copia de tu clave privada.
+> ⚠️ **Importante:** Nunca abras el puerto 22 a `0.0.0.0/0` en ambientes
+> productivos. Restringe el acceso SSH exclusivamente a tu IP o usa
+> **AWS Systems Manager Session Manager** como alternativa sin necesidad
+> de exponer el puerto 22.
 
-### Paso 6: Configuración de Red y Security Group
-Aquí defines las reglas de acceso al servidor:
+### 2.3 Almacenamiento
 
-1. En la sección **Network settings**, selecciona **Create security group**.
-2. Configura las reglas del firewall:
+El volumen raíz por defecto es suficiente para la mayoría de los casos de prueba.
+Ajusta el tamaño según las necesidades de tu carga de trabajo.
 
-| Tipo de Tráfico | Puerto | Origen (Source) | Propósito / Recomendación |
-|-----------------|--------|-----------------|---------------------------|
-| **SSH** | 22 | **My IP** (Tu IP pública) | ⚠️ **Seguridad:** Nunca uses `0.0.0.0/0` (Anywhere) para SSH. Esto expone tu puerto de administración a todo internet. |
-| **HTTP** | 80 | **Anywhere** (`0.0.0.0/0`) | Permite que cualquier persona en internet pueda ver tu sitio web si instalas un servidor web. |
+> 💡 **Tip:** El Free Tier incluye hasta 30 GB de almacenamiento EBS.
 
-### Paso 7: Lanzar la Instancia
-1. Deja la configuración de almacenamiento por defecto (8 GB o 30 GB de tipo gp3/gp2 son suficientes para pruebas y entran en la capa gratuita).
-2. En el panel lateral derecho, revisa el resumen y haz click en **Launch instance**.
-3. ¡Listo! En un par de minutos, el estado de tu instancia pasará de *Pending* a *Running*.
+3. Click en **Launch instance** y espera a que el estado cambie a `Running`
 
+---
 
 ## 3. Conexión SSH
 
-Una vez que tu instancia esté en estado **Running**, puedes conectarte a ella de forma remota utilizando la terminal y la clave privada (`.pem`) que descargaste previamente.
+> ⚠️ **Nota:** Se recomienda usar la terminal nativa de tu sistema operativo
+> o clientes como **iTerm2** (macOS) o **Windows Terminal** (Windows).
+> Evita PuTTY; su formato de llaves (`.ppk`) agrega complejidad innecesaria
+> cuando el estándar `.pem` funciona de forma nativa en cualquier terminal moderna.
 
-### 3.1 Configura los permisos de tu clave privada (Linux / macOS)
+### 3.1 Preparar la llave privada
 
-Por seguridad, SSH exige que tu archivo de clave privada tenga permisos sumamente restrictivos. Si el archivo es accesible por otros usuarios de tu sistema, la conexión será rechazada.
+Antes de conectarte, ajusta los permisos de tu archivo `.pem`. SSH rechazará
+la conexión si la llave tiene permisos demasiado abiertos:
 
-1. Abre tu terminal.
-2. Navega al directorio donde guardaste tu archivo `.pem` (por ejemplo, `Downloads` o `Descargas`):
-   ```bash
-   cd ~/Downloads
+```bash
+chmod 400 mi-llave.pem
+```
 
-   chmod 400 mi-clave-aws.pem
+### 3.2 Conectarse a la instancia
 
+```bash
+ssh -i "mi-llave.pem" usuario@ip-publica
+```
 
+El usuario por defecto depende de la AMI seleccionada:
+
+| AMI | Usuario por defecto |
+|-----|-------------------|
+| Amazon Linux 2023 | `ec2-user` |
+| Ubuntu | `ubuntu` |
+| Debian | `admin` |
+| RHEL | `ec2-user` |
+
+Por ejemplo, para una instancia Amazon Linux:
+
+```bash
+ssh -i "mi-llave.pem" ec2-user@54.123.45.67
+```
+
+### 3.3 Obtener la IP pública
+
+En la consola de EC2 → selecciona tu instancia → en el panel inferior
+encontrarás el campo **Public IPv4 address**.
+
+> 💡 **Tip:** Si vas a conectarte frecuentemente, agrega una entrada
+> en tu archivo `~/.ssh/config` para simplificar la conexión:
+
+```text
+Host mi-instancia
+    HostName 54.123.45.67
+    User ec2-user
+    IdentityFile ~/.ssh/mi-llave.pem
+```
+
+Con esa configuración puedes conectarte simplemente con:
+
+```bash
+ssh mi-instancia
+```
+
+---
+
+## 4. Administración básica
+
+### 4.1 Operaciones desde la consola de AWS
+
+Desde la consola de EC2 puedes gestionar el ciclo de vida de tus instancias.
+Selecciona la instancia y ve a **Instance state**:
+
+| Acción | Descripción |
+|--------|-------------|
+| **Start** | Inicia una instancia detenida |
+| **Stop** | Detiene la instancia, el almacenamiento EBS se conserva |
+| **Reboot** | Reinicia la instancia sin perder la IP pública |
+| **Terminate** | Elimina la instancia y su almacenamiento EBS permanentemente |
+
+> ⚠️ **Importante:** Una instancia en estado `Stopped` no genera costo
+> de cómputo, pero sí de almacenamiento EBS. Una instancia en `Terminated`
+> no puede recuperarse.
+
+### 4.2 Operaciones desde la instancia
+
+Una vez conectado vía SSH, los comandos básicos de administración varían
+según el sistema operativo:
+
+**Actualizar el sistema:**
+
+```bash
+# Amazon Linux 2023 / RHEL
+sudo dnf update -y
+
+# Ubuntu / Debian
+sudo apt update && sudo apt upgrade -y
+```
+
+**Revisar recursos:**
+
+```bash
+# Uso de CPU y memoria
+top
+
+# Uso de disco
+df -h
+
+# Memoria disponible
+free -h
+```
+
+**Gestionar servicios:**
+
+```bash
+# Ver estado de un servicio
+sudo systemctl status nombre-servicio
+
+# Iniciar un servicio
+sudo systemctl start nombre-servicio
+
+# Habilitar un servicio al arranque
+sudo systemctl enable nombre-servicio
+```
+
+### 4.3 Transferencia de archivos
+
+Para copiar archivos entre tu máquina local y la instancia usa `scp`:
+
+```bash
+# Local → Instancia
+scp -i "mi-llave.pem" archivo.txt ec2-user@54.123.45.67:/home/ec2-user/
+
+# Instancia → Local
+scp -i "mi-llave.pem" ec2-user@54.123.45.67:/home/ec2-user/archivo.txt .
+```
+
+---
 
 ## 5. Buenas prácticas
 
 ### Seguridad
 
-- **Usa el principio de mínimo privilegio en los Security Groups:** Nunca abras puertos de administración (como el 22 para SSH o el 3389 para RDP) a todo internet (`0.0.0.0/0`). Limítalos únicamente a tu dirección IP pública o al rango de red de tu organización.
-- **Evita el uso de contraseñas para acceder por SSH:** Confía siempre en la autenticación por llaves criptográficas (Key Pairs) y resguarda tu clave privada en un lugar seguro y con permisos correctos (`chmod 400`).
-- **Asigna Roles IAM en lugar de Access Keys:** Si tu aplicación dentro de la instancia EC2 necesita interactuar con otros servicios de AWS (como leer archivos de un bucket S3), asígnale un rol de IAM a la instancia. Jamás guardes tus credenciales de usuario dentro del servidor.
+- Asigna siempre un **rol IAM** a la instancia en lugar de configurar
+  access keys directamente en ella
+- Mantén el sistema operativo actualizado desde el primer día
+- Restringe las reglas de los security groups al mínimo necesario
+- Considera **AWS Systems Manager Session Manager** para acceso remoto
+  sin necesidad de exponer el puerto 22
 
 ### Costos
 
-- **Detén las instancias que no utilices:** Si estás utilizando instancias en entornos de desarrollo o aprendizaje, apágalas (Stop) al terminar tu jornada para evitar que consuman tu cuota mensual de la capa gratuita o generen cargos inesperados.
-- **Monitorea con alarmas de facturación:** Configura alertas que te notifiquen si tus recursos de EC2 comienzan a exceder el presupuesto establecido.
-- **Elimina recursos huérfanos:** Al terminar con una instancia que ya no necesitas, asegúrate de eliminarla permanentemente (Terminate). Revisa si quedaron volúmenes de almacenamiento (EBS) o direcciones IP elásticas asociadas sin usar, ya que AWS cobra por ellas aunque la instancia esté apagada.
+- Detén las instancias que no estés usando activamente
+- Revisa **EC2 → Instance types** y elige el tipo adecuado para tu carga,
+  ni más ni menos capacidad de la necesaria
+- Usa **AWS Cost Explorer** para monitorear el gasto de tus instancias
 
-### Monitoreo y Mantenimiento
+### Organización
 
-- **Usa etiquetas (Tags):** Facilita la administración de tus servidores asignándoles etiquetas que identifiquen su función, entorno y propietario (p. ej., `Env: Dev`, `App: WebServer`).
-- **Automatiza tareas de inicio:** Utiliza la sección de *User Data* al lanzar una instancia para automatizar la instalación de software y configuraciones iniciales, reduciendo el trabajo manual una vez dentro del servidor.
+- Usa tags consistentes en todas tus instancias:
+
+| Tag | Ejemplo |
+|-----|---------|
+| `Name` | `api-server-prod` |
+| `Environment` | `dev`, `staging`, `prod` |
+| `Project` | `mi-proyecto` |
+| `Owner` | `ana.garcia` |
+
+- Usa nombres descriptivos que indiquen el rol y ambiente de la instancia,
+  por ejemplo: `nginx-proxy-prod` en lugar de `servidor1`
 
 ---
 
 ## Siguientes pasos
 
-Con tu primera instancia de EC2 configurada y comprendida, el siguiente paso natural es aprender a almacenar y organizar archivos en la nube:
+Con tu instancia corriendo, puedes continuar con:
 
-- [Fundamentos de S3 (Simple Storage Service)](../04-s3/README.md)
+- [Funciones Lambda](../04-lambda/README.md)
 
 ---
 
 ## Recursos oficiales
 
-- [Documentación oficial de Amazon EC2](https://docs.aws.amazon.com/ec2)
-- [Precios de Amazon EC2](https://aws.amazon.com/ec2/pricing)
-- [Capa gratuita de AWS](https://aws.amazon.com/free)
+- [Documentación oficial de EC2](https://docs.aws.amazon.com/ec2)
+- [Tipos de instancia](https://aws.amazon.com/ec2/instance-types)
+- [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
 
 ---
 
-> 📝 **Nota:** Los links a otros tutoriales estarán disponibles conforme se publiquen en este repositorio.
+> 📝 **Nota:** Los links a otros tutoriales estarán disponibles conforme
+> se publiquen en este repositorio.
